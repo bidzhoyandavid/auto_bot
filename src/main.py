@@ -7,10 +7,10 @@ Sends notifications via Telegram.
 """
 
 import os
-from aiohttp import web
-import os
 import asyncio
 import logging
+
+from aiohttp import web
 import sys
 from datetime import datetime
 from typing import List
@@ -214,12 +214,17 @@ class AutoDealBot:
                 should_notify = False
                 reason = None
                 
-                if is_new and price_analysis.is_good_deal:
+                # Send ALL new listings (important when database is empty)
+                if is_new:
                     should_notify = True
-                    reason = "good_price"
-                elif is_new and urgency_analysis.is_urgent:
-                    should_notify = True
-                    reason = "urgent"
+                    reason = "new_listing"
+                    
+                    # Add special labels if applicable
+                    if price_analysis.is_good_deal:
+                        reason = "good_price"
+                    elif urgency_analysis.is_urgent:
+                        reason = "urgent"
+                        
                 elif not is_new and previous_price:
                     # Check for significant price drop
                     drop_percent = ((previous_price - listing.price_usd) / previous_price) * 100
