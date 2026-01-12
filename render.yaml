@@ -1,7 +1,8 @@
 services:
   - type: web
     name: auto-deal-bot
-    env: python
+    env: docker
+    dockerfilePath: ./Dockerfile
     region: frankfurt
     plan: free
     buildCommand: "pip install -r requirements.txt && playwright install --with-deps chromium"
@@ -15,5 +16,5 @@ services:
         value: "25"
       - key: DATABASE_URL
         value: "sqlite+aiosqlite:///data/auto_bot.db"
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: "0"
+      - key: PORT
+        value: "8080"

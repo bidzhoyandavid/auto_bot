@@ -1,0 +1,17 @@
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.db
+*.log
+.env
+.git
+.gitignore
+README.md
+.vscode
+.idea
+auto_bot.db
+data/
