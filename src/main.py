@@ -1,7 +1,7 @@
 """
 Auto Deal Bot - Main Entry Point
 
-Monitors car listings on list.am and myauto.ge for good deals
+Monitors car listings on list.am for good deals
 on BMW, Mercedes, Audi, and Lexus (2020+, under $20K).
 Sends notifications via Telegram.
 """
@@ -22,7 +22,6 @@ from .config import get_settings, Settings
 from .database.repository import Repository
 from .proxy_manager import ProxyManager
 from .scrapers.list_am import ListAmScraper
-from .scrapers.myauto_ge import MyAutoGeScraper
 from .scrapers.base import CarListing
 from .analyzers.price_analyzer import PriceAnalyzer
 from .analyzers.urgency_detector import UrgencyDetector
@@ -169,24 +168,6 @@ class AutoDealBot:
                 logger.info(f"list.am: Found {len(listings)} listings")
         except Exception as e:
             logger.error(f"Error scraping list.am: {e}")
-        
-        # Scrape myauto.ge
-        try:
-            async with MyAutoGeScraper(
-                proxy_manager=self.proxy_manager,
-                delay_min=self.settings.request_delay_min,
-                delay_max=self.settings.request_delay_max
-            ) as scraper:
-                listings = await scraper.scrape_listings(
-                    brands=self.settings.target_brands,
-                    min_year=self.settings.min_year,
-                    max_price_usd=self.settings.max_price_usd,
-                    max_pages=3
-                )
-                all_listings.extend(listings)
-                logger.info(f"myauto.ge: Found {len(listings)} listings")
-        except Exception as e:
-            logger.error(f"Error scraping myauto.ge: {e}")
         
         logger.info(f"Total listings found: {len(all_listings)}")
         

@@ -51,7 +51,7 @@ class TelegramBot:
         async def cmd_start(message: Message):
             await message.answer(
                 "🚗 <b>Auto Deal Bot</b>\n\n"
-                "I monitor car listings on list.am and myauto.ge "
+                "I monitor car listings on list.am "
                 "for great deals on BMW, Mercedes, Audi, and Lexus.\n\n"
                 "Commands:\n"
                 "/status - Check bot status\n"
@@ -62,7 +62,7 @@ class TelegramBot:
         async def cmd_status(message: Message):
             await message.answer(
                 "✅ Bot is running\n"
-                "📡 Monitoring: list.am, myauto.ge\n"
+                "📡 Monitoring: list.am\n"
                 "🚗 Brands: BMW, Mercedes, Audi, Lexus\n"
                 "📅 Year: 2020+\n"
                 "💰 Max price: $20,000"
@@ -206,9 +206,7 @@ class TelegramBot:
                 chat_id=self.chat_id,
                 text=(
                     "🚀 <b>Auto Deal Bot Started!</b>\n\n"
-                    "Monitoring:\n"
-                    "• list.am (Armenia)\n"
-                    "• myauto.ge (Georgia)\n\n"
+                    "Monitoring: list.am (Armenia)\n\n"
                     "Searching for: BMW, Mercedes, Audi, Lexus\n"
                     "Year: 2020+\n"
                     "Max price: $20,000"
