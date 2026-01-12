@@ -19,7 +19,15 @@ class ListAmScraper(BaseScraper):
     
     SOURCE_NAME = "list.am"
     BASE_URL = "https://www.list.am"
-    CARS_CATEGORY = "/category/16"  # Transport category (cars)
+    CARS_CATEGORY = "/category/23"  # Transport category (cars)
+    
+    # Brand IDs on list.am
+    BRAND_IDS = {
+        "BMW": 7,
+        "Mercedes": 49,
+        "Audi": 5,
+        "Lexus": 42,
+    }
     
     # CSS selectors
     LISTING_SELECTOR = ".gl"  # Grid listing item
@@ -39,18 +47,20 @@ class ListAmScraper(BaseScraper):
     
     async def build_search_url(
         self,
-        brands: List[str],
+        brand: str,
         min_year: int,
         max_price_usd: int
     ) -> str:
         """
-        Build search URL for list.am.
-        Note: list.am doesn't have brand filter in URL, we filter after scraping.
+        Build search URL for list.am for a specific brand.
         """
+        brand_id = self.BRAND_IDS.get(brand, 0)
+        
         params = {
-            "prc2": max_price_usd,  # Max price
-            "_a3_from": min_year,    # Min year
-            "crc": 1,                # Currency: 1=USD
+            "bid": brand_id,          # Brand ID
+            "price2": max_price_usd,  # Max price
+            "_a2_1": min_year,        # Min year
+            "crc": 1,                 # Currency: 1=USD
         }
         
         url = f"{self.BASE_URL}{self.CARS_CATEGORY}?{urlencode(params)}"
@@ -63,63 +73,72 @@ class ListAmScraper(BaseScraper):
         max_price_usd: int,
         max_pages: int = 5
     ) -> List[CarListing]:
-        """Scrape car listings from list.am."""
+        """Scrape car listings from list.am for all brands."""
         all_listings = []
-        brands_lower = [b.lower() for b in brands]
         
-        base_url = await self.build_search_url(brands, min_year, max_price_usd)
-        
-        for page_num in range(1, max_pages + 1):
-            # Construct page URL
-            if page_num == 1:
-                url = base_url
-            else:
-                url = f"{base_url}&pg={page_num}"
-            
-            logger.info(f"Scraping list.am page {page_num}: {url}")
-            
-            page = await self._fetch_page(url, wait_selector=".gl")
-            
-            if not page:
-                logger.warning(f"Failed to fetch page {page_num}")
-                break
-            
-            try:
-                # Get page content
-                content = await page.content()
-                soup = BeautifulSoup(content, "lxml")
+        # Scrape each brand separately (list.am requires one brand per request)
+        for brand in brands:
+            if brand not in self.BRAND_IDS:
+                logger.warning(f"Unknown brand: {brand}, skipping")
+                continue
                 
-                # Find all listing elements
-                listing_elements = soup.select(self.LISTING_SELECTOR)
+            base_url = await self.build_search_url(brand, min_year, max_price_usd)
+            logger.info(f"Scraping {brand} from list.am")
+            
+            for page_num in range(1, max_pages + 1):
+                # Construct page URL
+                if page_num == 1:
+                    url = base_url
+                else:
+                    url = f"{base_url}&pg={page_num}"
                 
-                if not listing_elements:
-                    logger.info(f"No more listings found on page {page_num}")
+                logger.info(f"Scraping list.am {brand} page {page_num}: {url}")
+                
+                page = await self._fetch_page(url, wait_selector=".gl")
+                
+                if not page:
+                    logger.warning(f"Failed to fetch page {page_num}")
                     break
                 
-                logger.info(f"Found {len(listing_elements)} listings on page {page_num}")
+                try:
+                    # Get page content
+                    content = await page.content()
+                    soup = BeautifulSoup(content, "lxml")
+                    
+                    # Find all listing elements
+                    listing_elements = soup.select(self.LISTING_SELECTOR)
+                    
+                    if not listing_elements:
+                        logger.info(f"No more listings found on page {page_num}")
+                        break
+                    
+                    logger.info(f"Found {len(listing_elements)} listings on page {page_num}")
+                    
+                    # Parse each listing
+                    for element in listing_elements:
+                        try:
+                            listing = await self.parse_listing_element(element, brand)
+                            
+                            if listing:
+                                all_listings.append(listing)
+                                logger.debug(f"Added: {listing.make} {listing.model} ${listing.price_usd}")
+                        except Exception as e:
+                            logger.warning(f"Failed to parse listing: {e}")
+                    
+                finally:
+                    await page.close()
                 
-                # Parse each listing
-                for element in listing_elements:
-                    try:
-                        listing = await self.parse_listing_element(element)
-                        
-                        if listing and self._matches_brand(listing, brands_lower):
-                            all_listings.append(listing)
-                            logger.debug(f"Added: {listing.make} {listing.model} ${listing.price_usd}")
-                    except Exception as e:
-                        logger.warning(f"Failed to parse listing: {e}")
-                
-            finally:
-                await page.close()
+                # Random delay between pages
+                if page_num < max_pages:
+                    await self._random_delay()
             
-            # Random delay between pages
-            if page_num < max_pages:
-                await self._random_delay()
+            # Delay between brands
+            await self._random_delay()
         
         logger.info(f"Total listings scraped from list.am: {len(all_listings)}")
         return all_listings
     
-    async def parse_listing_element(self, element: Any) -> Optional[CarListing]:
+    async def parse_listing_element(self, element: Any, brand: str = None) -> Optional[CarListing]:
         """Parse a single listing element from BeautifulSoup."""
         try:
             # Get listing URL and ID
