@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: auto-deal-bot
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: "pip install -r requirements.txt && playwright install chromium && playwright install-deps chromium"
+    startCommand: "python -m src.main"
+    envVars:
+      - key: 7903722639:AAE-jZiVfsza_FLkLxbZ8Xqw8kz1smIqDRY
+        sync: false
+      - key: 455900233
+        sync: false
+      - key: SCRAPE_INTERVAL_MINUTES
+        value: "25"
+      - key: DATABASE_URL
+        value: "sqlite+aiosqlite:///data/auto_bot.db"
