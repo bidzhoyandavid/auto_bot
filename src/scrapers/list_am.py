@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 from .base import BaseScraper, CarListing
 from ..proxy_manager import ProxyManager
-from ..config import URGENCY_KEYWORDS
+from ..config import URGENCY_KEYWORDS, TARGET_CARS
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,6 @@ class ListAmScraper(BaseScraper):
     SOURCE_NAME = "list.am"
     BASE_URL = "https://www.list.am"
     CARS_CATEGORY = "/category/23"  # Transport category (cars)
-    
-    # Brand IDs on list.am
-    BRAND_IDS = {
-        "BMW": 7,
-        "Mercedes": 49,
-        "Audi": 5,
-        "Lexus": 42,
-    }
     
     # CSS selectors
     LISTING_SELECTOR = ".gl"  # Grid listing item
@@ -47,43 +39,37 @@ class ListAmScraper(BaseScraper):
     
     async def build_search_url(
         self,
-        brand: str,
+        brand_id: int,
+        model_id: int,
         min_year: int,
         max_price_usd: int
     ) -> str:
-        """
-        Build search URL for list.am for a specific brand.
-        """
-        brand_id = self.BRAND_IDS.get(brand, 0)
-        
+        """Build search URL for list.am."""
         params = {
-            "bid": brand_id,          # Brand ID
-            "price2": max_price_usd,  # Max price
-            "_a2_1": min_year,        # Min year
-            "crc": 1,                 # Currency: 1=USD
+            "bid": brand_id,
+            "price2": max_price_usd,
+            "_a2_1": min_year,
+            "crc": 1,
         }
+        
+        if model_id > 0:
+            params["mid"] = model_id
         
         url = f"{self.BASE_URL}{self.CARS_CATEGORY}?{urlencode(params)}"
         return url
     
     async def scrape_listings(
         self,
-        brands: List[str],
         min_year: int,
         max_price_usd: int,
         max_pages: int = 5
     ) -> List[CarListing]:
-        """Scrape car listings from list.am for all brands."""
+        """Scrape car listings from list.am."""
         all_listings = []
         
-        # Scrape each brand separately (list.am requires one brand per request)
-        for brand in brands:
-            if brand not in self.BRAND_IDS:
-                logger.warning(f"Unknown brand: {brand}, skipping")
-                continue
-                
-            base_url = await self.build_search_url(brand, min_year, max_price_usd)
-            logger.info(f"Scraping {brand} from list.am")
+        for car_name, (brand_id, model_id) in TARGET_CARS.items():
+            base_url = await self.build_search_url(brand_id, model_id, min_year, max_price_usd)
+            logger.info(f"Scraping {car_name} from list.am")
             
             for page_num in range(1, max_pages + 1):
                 # Construct page URL
@@ -92,7 +78,7 @@ class ListAmScraper(BaseScraper):
                 else:
                     url = f"{base_url}&pg={page_num}"
                 
-                logger.info(f"Scraping list.am {brand} page {page_num}: {url}")
+                logger.info(f"Scraping list.am {car_name} page {page_num}: {url}")
                 
                 page = await self._fetch_page(url, wait_selector=".gl")
                 
@@ -132,7 +118,7 @@ class ListAmScraper(BaseScraper):
                 if page_num < max_pages:
                     await self._random_delay()
             
-            # Delay between brands
+            # Delay between car models
             await self._random_delay()
         
         logger.info(f"Total listings scraped from list.am: {len(all_listings)}")

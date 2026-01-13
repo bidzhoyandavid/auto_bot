@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
-from typing import List
+from pydantic import Field
+from typing import List, Dict
 import os
 
 
@@ -24,11 +24,7 @@ class Settings(BaseSettings):
     proxy_refresh_minutes: int = Field(default=15, validation_alias="PROXY_REFRESH_MINUTES")
     min_proxy_pool_size: int = Field(default=10, validation_alias="MIN_PROXY_POOL_SIZE")
     
-    # Car filters - stored as comma-separated string in .env
-    target_brands_str: str = Field(
-        default="BMW,Mercedes,Audi,Lexus",
-        validation_alias="TARGET_BRANDS"
-    )
+    # Car filters
     min_year: int = Field(default=2020, validation_alias="MIN_YEAR")
     max_price_usd: int = Field(default=20000, validation_alias="MAX_PRICE_USD")
     
@@ -37,11 +33,6 @@ class Settings(BaseSettings):
         default="sqlite+aiosqlite:///auto_bot.db",
         validation_alias="DATABASE_URL"
     )
-    
-    @property
-    def target_brands(self) -> List[str]:
-        """Parse target brands from comma-separated string."""
-        return [b.strip() for b in self.target_brands_str.split(",")]
 
 
 def get_settings() -> Settings:
@@ -49,21 +40,49 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# Brand mappings for different sites
-BRAND_MAPPINGS = {
-    "list.am": {
-        "BMW": "BMW",
-        "Mercedes": "Mercedes",
-        "Audi": "Audi",
-        "Lexus": "Lexus"
-    },
-    "myauto.ge": {
-        # Manufacturer IDs on myauto.ge
-        "BMW": "9",
-        "Mercedes": "47",
-        "Audi": "11",
-        "Lexus": "37"
-    }
+# =============================================================================
+# ЦЕЛЕВЫЕ МОДЕЛИ ДЛЯ ПОИСКА (list.am)
+# Формат: "Марка Модель": (brand_id, model_id)
+# Если model_id = 0, то ищет все модели этой марки
+# =============================================================================
+
+TARGET_CARS = {
+    "Mercedes E-Class": (49, 963),
+    "Mercedes S-Class": (49, 986),
+    "Mercedes GLC-Class": (49, 1984),
+    "Mercedes GLE-Class": (49, 1983),
+    "BMW 3 Series": (7, 187),
+    "BMW 4 Series": (7, 109),
+    "BMW 5 Series": (7, 110),
+    "BMW 7 Series": (7, 113),
+    "BMW X3": (7, 120),
+    "BMW X5": (7, 121),
+    "Audi A4": (5, 62),
+    "Audi A5": (5, 63),
+    "Audi A6": (5, 64),
+    "Audi A5": (5, 65),
+    "Audi A8": (5, 66),
+    "Audi Q5": (5, 71),
+    "Lexus RX": (42, 833),
+    "Lexus GS": (42, 825),
+    "Lexus ES": (42, 824),
+    "Lexus IS": (42, 828),
+    "Toyota Land Cruiser Prado": (76, 1597),
+    "Toyota Camry": (76, 1560),
+    "Toyota Highlander": (76, 1588),
+    "Mitsubishi Outlander": (53, 1069),
+    "Mazda CX-5": (48, 914),
+    
+    # Примеры как добавлять другие:
+    # "Mercedes C-Class": (49, 1317),
+    # "Mercedes GLE": (49, 5563),
+    # "BMW 3 Series": (7, 1133),
+    # "BMW X5": (7, 1143),
+    # "Audi A6": (5, 1098),
+    # "Lexus RX": (42, 1240),
+    #
+    # Все модели марки (model_id = 0):
+    # "BMW All": (7, 0),
 }
 
 # Urgency keywords for detection

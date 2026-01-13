@@ -159,7 +159,6 @@ class AutoDealBot:
                 delay_max=self.settings.request_delay_max
             ) as scraper:
                 listings = await scraper.scrape_listings(
-                    brands=self.settings.target_brands,
                     min_year=self.settings.min_year,
                     max_price_usd=self.settings.max_price_usd,
                     max_pages=3
