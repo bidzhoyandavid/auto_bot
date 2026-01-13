@@ -103,7 +103,7 @@ class ListAmScraper(BaseScraper):
                     # Parse each listing
                     for element in listing_elements:
                         try:
-                            listing = await self.parse_listing_element(element, brand)
+                            listing = await self.parse_listing_element(element, car_name)
                             
                             if listing:
                                 all_listings.append(listing)
